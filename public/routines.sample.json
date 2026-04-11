@@ -1,0 +1,20 @@
+[
+  {
+    "id": "my-routine-1",
+    "name": "My Routine Name",
+    "mode": "finite",
+    "workSec": 40,
+    "restSec": 15,
+    "circuitRestSec": 60,
+    "circuits": 1,
+    "exercises": [
+      {
+        "name": "Exercise Name",
+        "images": ["https://your-image-url-here.jpg"],
+        "tips": ["Keep good form", "Stay controlled", "Breathe steadily"],
+        "breathingCue": "Inhale down · Exhale up",
+        "commonMistakes": ["Don't arch your back", "Keep core tight"]
+      }
+    ]
+  }
+]

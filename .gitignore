@@ -26,3 +26,6 @@ coverage/
 fitness-tracker-export*.json
 *.local.json
 user-data/
+
+# Personal routine data — copy routines.sample.json → routines.json and fill in your own data
+public/routines.json

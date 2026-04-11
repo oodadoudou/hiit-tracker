@@ -1,30 +1,14 @@
-import { createContext, useContext, useMemo } from 'react';
-import { BUILTIN_ROUTINES, DEFAULT_APP_STATE, SEEDED_DAILY_METRICS, STORAGE_KEYS } from '../utils/constants';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_APP_STATE, HIGH_IMPACT_ROUTINE_IDS, SEEDED_DAILY_METRICS, STORAGE_KEYS } from '../utils/constants';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { dateKey, getPreviousDateKey } from '../utils/date';
 import { computeDailyDeficit, computeEstimatedMetabolism, deriveCalorieStatus, normalizeRoutine } from '../utils/workout';
 
 const AppContext = createContext(null);
 
-function isBuiltinRoutineId(id) {
-  return BUILTIN_ROUTINES.some((routine) => routine.id === id);
-}
-
-function dedupeRoutines(routines) {
-  const byName = new Map();
-  routines.forEach((routine) => {
-    const key = routine.name.trim().toLowerCase();
-    const existing = byName.get(key);
-    if (!existing) {
-      byName.set(key, routine);
-      return;
-    }
-    if (isBuiltinRoutineId(routine.id) && !isBuiltinRoutineId(existing.id)) {
-      byName.set(key, routine);
-    }
-  });
-  return Array.from(byName.values());
-}
+// ---------------------------------------------------------------------------
+// Normalisation helpers
+// ---------------------------------------------------------------------------
 
 function normalizeDailyMetricRecord(record, metabolicBurn) {
   const candidate = record && typeof record === 'object' ? record : {};
@@ -61,59 +45,119 @@ function normalizeDailyMetricRecord(record, metabolicBurn) {
   };
 }
 
-function normalizeState(input) {
+// builtinRoutines is the live array fetched from /routines.json
+function normalizeState(input, builtinRoutines) {
   const candidate = input && typeof input === 'object' ? input : {};
   const userSettings = {
     ...DEFAULT_APP_STATE.userSettings,
     ...(candidate.userSettings || {}),
   };
   const estimatedMetabolism = computeEstimatedMetabolism(userSettings);
-  const candidateRoutines = Array.isArray(candidate.routines)
+
+  const builtinIds = new Set(builtinRoutines.map((r) => r.id));
+
+  // User-stored routines (already normalized on save, re-normalize for safety)
+  const storedRoutines = Array.isArray(candidate.routines)
     ? candidate.routines.map(normalizeRoutine).filter(Boolean)
-    : DEFAULT_APP_STATE.routines;
-  const builtinMissing = BUILTIN_ROUTINES.filter(
-    (builtin) => !candidateRoutines.some((routine) => routine.id === builtin.id),
-  );
-  const routines = dedupeRoutines([...candidateRoutines, ...builtinMissing]);
+    : [];
+
+  // IDs present in stored state
+  const storedIds = new Set(storedRoutines.map((r) => r.id));
+
+  // Builtins that are not yet in stored state get appended
+  const builtinMissing = builtinRoutines.filter((b) => !storedIds.has(b.id));
+
+  // Merge: stored first (user wins), then new builtins appended
+  // Deduplicate by ID — stored copy always takes priority
+  const byId = new Map();
+  [...storedRoutines, ...builtinMissing].forEach((r) => {
+    if (!byId.has(r.id)) byId.set(r.id, r);
+  });
+  const routines = Array.from(byId.values());
+
   const dailyMetricsSource = (candidate.dailyMetrics && typeof candidate.dailyMetrics === 'object')
     ? candidate.dailyMetrics
     : SEEDED_DAILY_METRICS;
   const dailyMetrics = Object.fromEntries(
     Object.entries(dailyMetricsSource).map(([key, record]) => [key, normalizeDailyMetricRecord(record, estimatedMetabolism)]),
   );
+
+  const fallbackId = routines[0]?.id ?? null;
   return {
-    routines: routines.length ? routines : DEFAULT_APP_STATE.routines,
-    selectedRoutineId: routines.some((routine) => routine.id === candidate.selectedRoutineId)
+    routines,
+    selectedRoutineId: routines.some((r) => r.id === candidate.selectedRoutineId)
       ? candidate.selectedRoutineId
-      : (routines[0] || DEFAULT_APP_STATE.routines[0]).id,
+      : fallbackId,
     workoutHistory: Array.isArray(candidate.workoutHistory) ? candidate.workoutHistory : [],
     dailyMetrics,
     userSettings,
+    _builtinIds: builtinIds,
   };
 }
 
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+
 export function AppProvider({ children }) {
-  const [state, setState] = useLocalStorage(STORAGE_KEYS.appState, DEFAULT_APP_STATE);
-  const safeState = useMemo(() => normalizeState(state), [state]);
+  const [rawState, setRawState] = useLocalStorage(STORAGE_KEYS.appState, DEFAULT_APP_STATE);
+  const [builtinRoutines, setBuiltinRoutines] = useState([]);
+  const [builtinsReady, setBuiltinsReady] = useState(false);
+  const builtinRoutinesRef = useRef(builtinRoutines);
+
+  useEffect(() => {
+    builtinRoutinesRef.current = builtinRoutines;
+  }, [builtinRoutines]);
+
+  // Fetch routines.json once on mount
+  useEffect(() => {
+    fetch('/routines.json')
+      .then((res) => {
+        if (!res.ok) throw new Error('routines.json not found');
+        return res.json();
+      })
+      .then((data) => {
+        const routines = Array.isArray(data) ? data.map(normalizeRoutine).filter(Boolean) : [];
+        setBuiltinRoutines(routines);
+      })
+      .catch(() => {
+        // File missing or malformed — app still works with user-saved routines
+      })
+      .finally(() => setBuiltinsReady(true));
+  }, []);
+
+  const safeState = useMemo(
+    () => normalizeState(rawState, builtinRoutines),
+    [rawState, builtinRoutines],
+  );
 
   const todayKey = dateKey();
-  const estimatedMetabolism = useMemo(() => computeEstimatedMetabolism(safeState.userSettings), [safeState.userSettings]);
+  const estimatedMetabolism = useMemo(
+    () => computeEstimatedMetabolism(safeState.userSettings),
+    [safeState.userSettings],
+  );
+
   const getDailyMetricsValue = useMemo(
     () => (key) => safeState.dailyMetrics[key] || normalizeDailyMetricRecord(null, estimatedMetabolism),
     [estimatedMetabolism, safeState.dailyMetrics],
   );
+
   const todayMetrics = getDailyMetricsValue(todayKey);
 
   const updateState = (updater) => {
-    setState((prev) => normalizeState(typeof updater === 'function' ? updater(normalizeState(prev)) : updater));
+    setRawState((prev) => {
+      const next = typeof updater === 'function' ? updater(normalizeState(prev, builtinRoutinesRef.current)) : updater;
+      return normalizeState(next, builtinRoutinesRef.current);
+    });
   };
 
   const value = useMemo(() => ({
     state: safeState,
+    builtinsReady,
     todayKey,
     todayMetrics,
     estimatedMetabolism,
-    selectedRoutine: safeState.routines.find((routine) => routine.id === safeState.selectedRoutineId) || safeState.routines[0],
+    selectedRoutine: safeState.routines.find((r) => r.id === safeState.selectedRoutineId) || safeState.routines[0] || null,
     getDailyMetrics(key) {
       return getDailyMetricsValue(key);
     },
@@ -134,12 +178,8 @@ export function AppProvider({ children }) {
     deleteRoutine(id) {
       updateState((prev) => {
         if (prev.routines.length <= 1) return prev;
-        const routines = prev.routines.filter((routine) => routine.id !== id);
-        return {
-          ...prev,
-          routines,
-          selectedRoutineId: routines[0].id,
-        };
+        const routines = prev.routines.filter((r) => r.id !== id);
+        return { ...prev, routines, selectedRoutineId: routines[0].id };
       });
     },
     addWorkoutHistory(entry) {
@@ -177,10 +217,7 @@ export function AppProvider({ children }) {
         ...prev,
         dailyMetrics: {
           ...prev.dailyMetrics,
-          [key]: normalizeDailyMetricRecord(
-            prev.dailyMetrics[key],
-            computeEstimatedMetabolism(prev.userSettings),
-          ),
+          [key]: normalizeDailyMetricRecord(prev.dailyMetrics[key], computeEstimatedMetabolism(prev.userSettings)),
         },
       }));
     },
@@ -188,10 +225,7 @@ export function AppProvider({ children }) {
       updateState((prev) => {
         const nextDailyMetrics = { ...prev.dailyMetrics };
         delete nextDailyMetrics[key];
-        return {
-          ...prev,
-          dailyMetrics: nextDailyMetrics,
-        };
+        return { ...prev, dailyMetrics: nextDailyMetrics };
       });
     },
     updateTodayMetrics(patch) {
@@ -207,19 +241,13 @@ export function AppProvider({ children }) {
       }));
     },
     updateUserSettings(patch) {
-      updateState((prev) => ({
-        ...prev,
-        userSettings: {
-          ...prev.userSettings,
-          ...patch,
-        },
-      }));
+      updateState((prev) => ({ ...prev, userSettings: { ...prev.userSettings, ...patch } }));
     },
     exportState() {
       return JSON.stringify(safeState, null, 2);
     },
     importState(raw) {
-      updateState(normalizeState(JSON.parse(raw)));
+      updateState(normalizeState(JSON.parse(raw), builtinRoutinesRef.current));
     },
     hasThreeDayStreak() {
       let key = todayKey;
@@ -232,7 +260,13 @@ export function AppProvider({ children }) {
       }
       return true;
     },
-  }), [estimatedMetabolism, getDailyMetricsValue, safeState, todayKey, todayMetrics]);
+    hasConsecutiveHighImpact() {
+      const last3 = [...safeState.workoutHistory]
+        .sort((a, b) => new Date(b.dateIso) - new Date(a.dateIso))
+        .slice(0, 3);
+      return last3.length === 3 && last3.every((entry) => HIGH_IMPACT_ROUTINE_IDS.has(entry.routineId));
+    },
+  }), [builtinsReady, estimatedMetabolism, getDailyMetricsValue, safeState, todayKey, todayMetrics]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

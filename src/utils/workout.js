@@ -14,11 +14,17 @@ export function normalizeExercise(exercise) {
   const tips = Array.isArray(exercise.tips)
     ? exercise.tips.map((item) => String(item).trim()).filter(Boolean)
     : [];
+  const commonMistakes = Array.isArray(exercise.commonMistakes)
+    ? exercise.commonMistakes.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+  const breathingCue = String(exercise.breathingCue || '').trim();
   if (!name) return null;
   return {
     name,
     images: images.length ? images : ['https://via.placeholder.com/640x360?text=Exercise'],
     tips: tips.length ? tips : ['Keep good form', 'Stay controlled'],
+    commonMistakes,
+    breathingCue,
   };
 }
 

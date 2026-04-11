@@ -4,9 +4,64 @@ import CaloricDeficitCard from '../components/dashboard/CaloricDeficitCard';
 import HydrationWidget from '../components/dashboard/HydrationWidget';
 import StreakBadge from '../components/dashboard/StreakBadge';
 import { useAppContext } from '../context/AppContext';
+import { dateKey, formatDateShort, getPreviousDateKey } from '../utils/date';
+
+// ── Feature 8: Weekly Training Heatmap ──────────────────────────────────────
+function WeeklyHeatmap({ workoutHistory, dailyMetrics }) {
+  const days = useMemo(() => {
+    const today = dateKey();
+    const result = [];
+    let key = today;
+    for (let i = 0; i < 7; i += 1) {
+      result.unshift(key);
+      key = getPreviousDateKey(key);
+    }
+    return result;
+  }, []);
+
+  return (
+    <div className="rounded-[1.4rem] border border-white/10 bg-[#222925] p-4">
+      <p className="mb-3 text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">最近 7 天</p>
+      <div className="flex gap-2">
+        {days.map((day) => {
+          const hasWorkout = workoutHistory.some((h) => dateKey(new Date(h.dateIso)) === day);
+          const metrics = dailyMetrics[day];
+          const hasDeficit = metrics && metrics.deficit < 0;
+          const isToday = day === dateKey();
+
+          let bg = 'bg-white/5';
+          let label = '无记录';
+          if (hasWorkout && hasDeficit) { bg = 'bg-[#d4ff6a]'; label = '训练+赤字'; }
+          else if (hasWorkout) { bg = 'bg-[#4a7a55]'; label = '已训练'; }
+          else if (hasDeficit) { bg = 'bg-[#6a7a3a]'; label = '赤字达标'; }
+
+          const [, month, dayNum] = day.split('-');
+          return (
+            <div key={day} className="flex flex-1 flex-col items-center gap-1.5" title={`${day} — ${label}`}>
+              <div
+                className={`h-10 w-full rounded-xl transition-all ${bg} ${isToday ? 'ring-2 ring-white/20' : ''}`}
+              />
+              <span className="text-[10px] text-[#8d9688]">
+                {Number(month)}/{Number(dayNum)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-[#8d9688]">
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#d4ff6a]" /> 训练+赤字</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#4a7a55]" /> 已训练</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#6a7a3a]" /> 赤字达标</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-white/5 border border-white/10" /> 无记录</span>
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { todayKey, selectedDate, dailyMetrics, userSettings, estimatedMetabolism, updateDailyMetrics, createDailyMetrics, deleteDailyMetrics, updateUserSettings, hasThreeDayStreak } = useDashboardContext();
+  const { todayKey, selectedDate, dailyMetrics, userSettings, estimatedMetabolism, updateDailyMetrics, createDailyMetrics, deleteDailyMetrics, updateUserSettings, hasThreeDayStreak, state } = useDashboardContext();
   const streak = hasThreeDayStreak();
   const [activeDate, setActiveDate] = useState(todayKey);
   const metrics = selectedDate(activeDate);
@@ -35,37 +90,37 @@ export default function DashboardPage() {
           <div className="grid gap-3 sm:grid-cols-4">
             <div>
               <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Sex</label>
-              <select value={userSettings.sex || 'female'} onChange={(event) => updateUserSettings({ sex: event.target.value })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none">
+              <select value={userSettings.sex || 'female'} onChange={(e) => updateUserSettings({ sex: e.target.value })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none">
                 <option value="female">Female</option>
                 <option value="male">Male</option>
               </select>
             </div>
             <div>
               <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Age</label>
-              <input type="number" min="18" value={userSettings.age} onChange={(event) => updateUserSettings({ age: Number(event.target.value) || 18 })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none" />
+              <input type="number" min="18" value={userSettings.age} onChange={(e) => updateUserSettings({ age: Number(e.target.value) || 18 })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none" />
             </div>
             <div>
               <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Height</label>
-              <input type="number" min="120" value={userSettings.heightCm} onChange={(event) => updateUserSettings({ heightCm: Number(event.target.value) || 120 })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none" />
+              <input type="number" min="120" value={userSettings.heightCm} onChange={(e) => updateUserSettings({ heightCm: Number(e.target.value) || 120 })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none" />
             </div>
             <div>
               <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Weight</label>
-              <input type="number" min="30" step="0.1" value={userSettings.weightKg} onChange={(event) => updateUserSettings({ weightKg: Number(event.target.value) || 30 })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none" />
+              <input type="number" min="30" step="0.1" value={userSettings.weightKg} onChange={(e) => updateUserSettings({ weightKg: Number(e.target.value) || 30 })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none" />
             </div>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Date</label>
-            <input type="date" value={activeDate} onChange={(event) => setActiveDate(event.target.value)} className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none" />
+            <input type="date" value={activeDate} onChange={(e) => setActiveDate(e.target.value)} className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none" />
           </div>
           <div>
             <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Intake</label>
-            <input type="number" min="0" value={metrics.intake} onChange={(event) => updateDailyMetrics(activeDate, { intake: Number(event.target.value) || 0 })} className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none" />
+            <input type="number" min="0" value={metrics.intake} onChange={(e) => updateDailyMetrics(activeDate, { intake: Number(e.target.value) || 0 })} className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none" />
           </div>
           <div>
             <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Exercise Burn</label>
-            <input type="number" min="0" value={metrics.exerciseBurn} onChange={(event) => updateDailyMetrics(activeDate, { exerciseBurn: Number(event.target.value) || 0 })} className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none" />
+            <input type="number" min="0" value={metrics.exerciseBurn} onChange={(e) => updateDailyMetrics(activeDate, { exerciseBurn: Number(e.target.value) || 0 })} className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none" />
           </div>
           <div>
             <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Goal</label>
@@ -73,7 +128,7 @@ export default function DashboardPage() {
           </div>
           <div className="sm:col-span-2">
             <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Note</label>
-            <input type="text" value={metrics.note || ''} onChange={(event) => updateDailyMetrics(activeDate, { note: event.target.value })} className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none" placeholder="Optional note for this day" />
+            <input type="text" value={metrics.note || ''} onChange={(e) => updateDailyMetrics(activeDate, { note: e.target.value })} className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none" placeholder="Optional note for this day" />
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
@@ -131,7 +186,14 @@ export default function DashboardPage() {
         </div>
       </Card>
       <div className="space-y-4">
-        <Card subtitle="Hydration" title="Water"><HydrationWidget waterMl={metrics.waterMl} onAdd={() => updateDailyMetrics(activeDate, { waterMl: metrics.waterMl + 250 })} onReset={() => updateDailyMetrics(activeDate, { waterMl: 0 })} /></Card>
+        {/* ── Feature 8: Weekly Heatmap ── */}
+        <WeeklyHeatmap
+          workoutHistory={state.workoutHistory}
+          dailyMetrics={dailyMetrics}
+        />
+        <Card subtitle="Hydration" title="Water">
+          <HydrationWidget waterMl={metrics.waterMl} onAdd={() => updateDailyMetrics(activeDate, { waterMl: metrics.waterMl + 250 })} onReset={() => updateDailyMetrics(activeDate, { waterMl: 0 })} />
+        </Card>
         <StreakBadge active={streak} />
       </div>
     </div>
@@ -141,6 +203,7 @@ export default function DashboardPage() {
 function useDashboardContext() {
   const context = useAppContext();
   return {
+    state: context.state,
     todayKey: context.todayKey,
     dailyMetrics: context.state.dailyMetrics,
     userSettings: context.state.userSettings,
