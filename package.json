@@ -29,15 +29,18 @@
     "appId": "com.dadoudou.fitnesstimer",
     "productName": "FitnessTimerTracker",
     "artifactName": "${productName}-${version}.${ext}",
+    "icon": "build/icon.png",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "build/icon.png",
       "package.json"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "signAndEditExecutable": false,
       "executableName": "FitnessTimerTracker",
       "target": [
