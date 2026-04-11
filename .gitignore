@@ -22,3 +22,7 @@ desktop.ini
 *.swo
 
 coverage/
+
+fitness-tracker-export*.json
+*.local.json
+user-data/

@@ -79,3 +79,11 @@ export function computeEstimatedMetabolism({ heightCm, weightKg, age, sex = 'fem
 export function computeDailyDeficit({ intake = 0, exerciseBurn = 0, metabolicBurn = 0 }) {
   return Math.round(Number(intake) - Number(exerciseBurn) - Number(metabolicBurn));
 }
+
+export function deriveCalorieStatus(deficit) {
+  const value = Number(deficit) || 0;
+  if (value > 100) return '盈余';
+  if (value > -200) return '维持';
+  if (value > -700) return '减脂';
+  return '强减脂';
+}

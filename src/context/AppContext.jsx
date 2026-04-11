@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo } from 'react';
 import { BUILTIN_ROUTINES, DEFAULT_APP_STATE, SEEDED_DAILY_METRICS, STORAGE_KEYS } from '../utils/constants';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { dateKey, getPreviousDateKey } from '../utils/date';
-import { computeDailyDeficit, computeEstimatedMetabolism, normalizeRoutine } from '../utils/workout';
+import { computeDailyDeficit, computeEstimatedMetabolism, deriveCalorieStatus, normalizeRoutine } from '../utils/workout';
 
 const AppContext = createContext(null);
 
@@ -56,7 +56,7 @@ function normalizeDailyMetricRecord(record, metabolicBurn) {
     intakeRangeText: String(candidate.intakeRangeText || ''),
     totalBurnRangeText: String(candidate.totalBurnRangeText || ''),
     deficitRangeText: String(candidate.deficitRangeText || ''),
-    status: String(candidate.status || ''),
+    status: deriveCalorieStatus(deficit),
     note: String(candidate.note || ''),
   };
 }
@@ -75,10 +75,9 @@ function normalizeState(input) {
     (builtin) => !candidateRoutines.some((routine) => routine.id === builtin.id),
   );
   const routines = dedupeRoutines([...candidateRoutines, ...builtinMissing]);
-  const dailyMetricsSource = {
-    ...SEEDED_DAILY_METRICS,
-    ...((candidate.dailyMetrics && typeof candidate.dailyMetrics === 'object') ? candidate.dailyMetrics : {}),
-  };
+  const dailyMetricsSource = (candidate.dailyMetrics && typeof candidate.dailyMetrics === 'object')
+    ? candidate.dailyMetrics
+    : SEEDED_DAILY_METRICS;
   const dailyMetrics = Object.fromEntries(
     Object.entries(dailyMetricsSource).map(([key, record]) => [key, normalizeDailyMetricRecord(record, estimatedMetabolism)]),
   );
@@ -172,6 +171,28 @@ export function AppProvider({ children }) {
           ),
         },
       }));
+    },
+    createDailyMetrics(key) {
+      updateState((prev) => ({
+        ...prev,
+        dailyMetrics: {
+          ...prev.dailyMetrics,
+          [key]: normalizeDailyMetricRecord(
+            prev.dailyMetrics[key],
+            computeEstimatedMetabolism(prev.userSettings),
+          ),
+        },
+      }));
+    },
+    deleteDailyMetrics(key) {
+      updateState((prev) => {
+        const nextDailyMetrics = { ...prev.dailyMetrics };
+        delete nextDailyMetrics[key];
+        return {
+          ...prev,
+          dailyMetrics: nextDailyMetrics,
+        };
+      });
     },
     updateTodayMetrics(patch) {
       updateState((prev) => ({

@@ -67,7 +67,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = 'fitness-tracker-export.json';
+    anchor.download = 'hiit-tracker-full-backup.json';
     anchor.click();
     URL.revokeObjectURL(url);
   };

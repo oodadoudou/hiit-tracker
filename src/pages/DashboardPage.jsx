@@ -2,15 +2,15 @@ import { useMemo, useState } from 'react';
 import Card from '../components/shared/Card';
 import CaloricDeficitCard from '../components/dashboard/CaloricDeficitCard';
 import HydrationWidget from '../components/dashboard/HydrationWidget';
-import HeartRateZone from '../components/dashboard/HeartRateZone';
 import StreakBadge from '../components/dashboard/StreakBadge';
 import { useAppContext } from '../context/AppContext';
 
 export default function DashboardPage() {
-  const { todayKey, selectedDate, dailyMetrics, userSettings, estimatedMetabolism, updateDailyMetrics, hasThreeDayStreak } = useDashboardContext();
+  const { todayKey, selectedDate, dailyMetrics, userSettings, estimatedMetabolism, updateDailyMetrics, createDailyMetrics, deleteDailyMetrics, updateUserSettings, hasThreeDayStreak } = useDashboardContext();
   const streak = hasThreeDayStreak();
   const [activeDate, setActiveDate] = useState(todayKey);
   const metrics = selectedDate(activeDate);
+  const hasActiveRecord = Boolean(dailyMetrics[activeDate]);
   const calorieHistory = useMemo(
     () => Object.entries(dailyMetrics)
       .sort(([a], [b]) => (a < b ? 1 : -1))
@@ -21,6 +21,39 @@ export default function DashboardPage() {
   return (
     <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
       <Card subtitle="Calories" title="Daily Log">
+        <div className="mb-4 rounded-[1.4rem] border border-white/10 bg-[#222925] p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Profile</p>
+              <p className="mt-1 text-lg font-medium text-[#f2f5ef]">Metabolism Setup</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Estimated Burn</p>
+              <p className="mt-1 text-lg font-semibold text-[#d4ff6a]">{estimatedMetabolism} kcal</p>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div>
+              <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Sex</label>
+              <select value={userSettings.sex || 'female'} onChange={(event) => updateUserSettings({ sex: event.target.value })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none">
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Age</label>
+              <input type="number" min="18" value={userSettings.age} onChange={(event) => updateUserSettings({ age: Number(event.target.value) || 18 })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none" />
+            </div>
+            <div>
+              <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Height</label>
+              <input type="number" min="120" value={userSettings.heightCm} onChange={(event) => updateUserSettings({ heightCm: Number(event.target.value) || 120 })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none" />
+            </div>
+            <div>
+              <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Weight</label>
+              <input type="number" min="30" step="0.1" value={userSettings.weightKg} onChange={(event) => updateUserSettings({ weightKg: Number(event.target.value) || 30 })} className="w-full rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.03)] px-4 py-3 outline-none" />
+            </div>
+          </div>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Date</label>
@@ -38,6 +71,18 @@ export default function DashboardPage() {
             <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Goal</label>
             <input type="number" min="0" value={userSettings.calorieGoal} readOnly className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none text-[#aeb7a8]" />
           </div>
+          <div className="sm:col-span-2">
+            <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Note</label>
+            <input type="text" value={metrics.note || ''} onChange={(event) => updateDailyMetrics(activeDate, { note: event.target.value })} className="w-full rounded-[1.4rem] border border-white/10 bg-[#222925] px-4 py-3 outline-none" placeholder="Optional note for this day" />
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button type="button" onClick={() => createDailyMetrics(activeDate)} className="rounded-full bg-[#d4ff6a] px-4 py-3 font-semibold text-black">
+            {hasActiveRecord ? 'Update Record' : 'Add Record'}
+          </button>
+          <button type="button" onClick={() => deleteDailyMetrics(activeDate)} disabled={!hasActiveRecord} className={hasActiveRecord ? 'rounded-full bg-[#ff8b2b] px-4 py-3 font-semibold text-black' : 'rounded-full bg-[#3a403c] px-4 py-3 font-semibold text-[#8d9688]'}>
+            Delete Record
+          </button>
         </div>
         <div className="mt-4">
           <CaloricDeficitCard
@@ -87,7 +132,6 @@ export default function DashboardPage() {
       </Card>
       <div className="space-y-4">
         <Card subtitle="Hydration" title="Water"><HydrationWidget waterMl={metrics.waterMl} onAdd={() => updateDailyMetrics(activeDate, { waterMl: metrics.waterMl + 250 })} onReset={() => updateDailyMetrics(activeDate, { waterMl: 0 })} /></Card>
-        <Card subtitle="Heart Rate" title="Fat-Loss Zone"><HeartRateZone age={userSettings.age} /></Card>
         <StreakBadge active={streak} />
       </div>
     </div>
@@ -102,6 +146,9 @@ function useDashboardContext() {
     userSettings: context.state.userSettings,
     estimatedMetabolism: context.estimatedMetabolism,
     updateDailyMetrics: context.updateDailyMetrics,
+    createDailyMetrics: context.createDailyMetrics,
+    deleteDailyMetrics: context.deleteDailyMetrics,
+    updateUserSettings: context.updateUserSettings,
     selectedDate: context.getDailyMetrics,
     hasThreeDayStreak: context.hasThreeDayStreak,
   };

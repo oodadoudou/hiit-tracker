@@ -30,7 +30,7 @@ export default function WorkoutPage({ onSessionStop }) {
   ];
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1.22fr_0.78fr]">
+    <div className="grid gap-4 lg:grid-cols-[1.02fr_0.98fr]">
       <Card subtitle="Training" title="Live Session" className="overflow-hidden">
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-5">
           <div className="w-full max-w-sm">
@@ -39,9 +39,6 @@ export default function WorkoutPage({ onSessionStop }) {
               {state.routines.map((routine) => <option key={routine.id} value={routine.id}>{routine.name}</option>)}
             </select>
           </div>
-          <p className="max-w-xs text-sm leading-6 text-[#9ca599]">
-            当前只保留训练需要的信息密度，弱化仪表盘式装饰。
-          </p>
         </div>
         <div className="mt-6 rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(38,46,41,0.72),rgba(25,31,28,0.72))] px-5 py-6 sm:px-7 sm:py-7">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
@@ -59,9 +56,9 @@ export default function WorkoutPage({ onSessionStop }) {
           </div>
           <div className="mt-6 grid gap-3 border-t border-white/10 pt-5 sm:grid-cols-2">
             {sessionFacts.map((fact) => (
-              <div key={fact.label} className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] px-4 py-4">
+              <div key={fact.label} className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.28em] text-[#889183]">{fact.label}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#f2f5ef]">{fact.value}</p>
+                <p className="mt-1.5 text-xl font-semibold tracking-[-0.03em] text-[#f2f5ef]">{fact.value}</p>
               </div>
             ))}
           </div>

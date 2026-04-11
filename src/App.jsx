@@ -29,21 +29,16 @@ export default function App() {
       <TopNav page={page} onChange={setPage} />
       <header className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
         <div className="rounded-[2rem] border border-white/10 bg-[rgba(18,22,20,0.82)] px-5 py-5 shadow-[0_20px_70px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:px-7">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-[11px] uppercase tracking-[0.42em] text-[#c8d1c3]">G Direction</p>
               <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#f2f5ef] sm:text-4xl">
                 Focused Training
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#aeb7a8]">
-                训练计时、记录与设置被整理成更安静的单页体验，不再强调仪表盘式的数据堆叠。
-              </p>
             </div>
-            <div className="min-w-[180px] border-l border-white/10 pl-0 sm:pl-6">
+            <div className="min-w-[140px] sm:text-right">
               <p className="text-[10px] uppercase tracking-[0.35em] text-[#8d9688]">Today</p>
               <p className="mt-2 text-lg font-medium text-[#f2f5ef]">{formatDateShort()}</p>
-              <p className="mt-3 text-xs uppercase tracking-[0.28em] text-[#8d9688]">Mode</p>
-              <p className="mt-1 text-sm text-[#c8d1c3]">Japanese Minimal Sport</p>
             </div>
           </div>
         </div>
