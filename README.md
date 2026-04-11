@@ -20,23 +20,6 @@ Desktop HIIT timer and calorie log app built with `React + Vite + Electron`.
   - routines
   - body settings
 
-## UI Preview
-
-Current UI direction:
-
-- Japanese-minimal sports utility look
-- dark moss background with muted panels
-- neon-lime accent for primary actions
-- orange accent for destructive / skip actions
-- pixel dumbbell app icon matching the UI palette
-
-Main layout:
-
-- `Workout`: timer + guide side by side
-- `Daily Log`: calorie records, profile-based metabolism setup, editable history
-- `History`: workout session records
-- `Settings`: routine editor + full JSON import/export
-
 ## Development
 
 Install dependencies:
