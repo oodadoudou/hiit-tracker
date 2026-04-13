@@ -8,6 +8,7 @@ import RoutinesPage from './pages/RoutinesPage';
 import SettingsPage from './pages/SettingsPage';
 import DataPage from './pages/DataPage';
 import Modal from './components/shared/Modal';
+import AsciiCelebration from './components/shared/AsciiCelebration';
 import { useAppContext } from './context/AppContext';
 
 function getMotivationalMessage(summary, isNewCalBest, isNewDurBest) {
@@ -29,7 +30,7 @@ export default function App() {
   const [rpe, setRpe] = useState(5);
   const [jointComfort, setJointComfort] = useState(5);
   const [discardPromptOpen, setDiscardPromptOpen] = useState(false);
-  const { state, addWorkoutHistory, todayKey } = useAppContext();
+  const { state, addWorkoutHistory, updateWorkoutHistory, todayKey } = useAppContext();
   const minimumSavedWorkoutSec = Math.max(0, Number(state.userSettings.minimumSavedWorkoutSec) || 0);
   const todayLabel = useMemo(
     () => formatDateShort(new Date(`${todayKey}T12:00:00`)),
@@ -40,7 +41,7 @@ export default function App() {
   const { isNewCalBest, isNewDurBest } = useMemo(() => {
     if (!pendingSummary) return {};
     const history = state.workoutHistory.filter(
-      (item) => item.routineId === pendingSummary.routineId,
+      (item) => item.routineId === pendingSummary.routineId && item.id !== pendingSummary.id,
     );
     if (!history.length) return { isNewCalBest: true, isNewDurBest: true };
     const maxCals = Math.max(...history.map((h) => h.caloriesBurned || 0));
@@ -88,18 +89,24 @@ export default function App() {
 
   const handleSessionStop = (summary) => {
     if (!summary) return;
-    const dur = summary.totalDurationSec || 0;
-    // Manual stops always show the save prompt regardless of duration
-    if (!summary.wasManualStop && dur < minimumSavedWorkoutSec) {
-      setPendingSummary(null);
-      const mins = Math.round(minimumSavedWorkoutSec / 60);
-      setSessionNotice(`Session under ${mins} min — not saved. Adjust the minimum in Profile settings.`);
+    const isManualStop = Boolean(summary.wasManualStop);
+    if (!isManualStop) {
+      const ok = addWorkoutHistory({ ...summary, rpe: 5, jointComfort: 5 });
+      if (!ok) return;
+      setPendingSummary({ ...summary, wasAutoSaved: true });
+      setDiscardPromptOpen(false);
+      setRpe(5);
+      setJointComfort(5);
       return;
     }
     setPendingSummary(summary);
   };
 
   const requestCloseSummary = () => {
+    if (pendingSummary?.wasAutoSaved) {
+      confirmDiscardSummary();
+      return;
+    }
     setDiscardPromptOpen(true);
   };
 
@@ -116,7 +123,11 @@ export default function App() {
 
   const saveSession = () => {
     if (!pendingSummary) return;
-    addWorkoutHistory({ ...pendingSummary, rpe, jointComfort });
+    if (pendingSummary.wasAutoSaved) {
+      updateWorkoutHistory(pendingSummary.id, { rpe, jointComfort });
+    } else {
+      addWorkoutHistory({ ...pendingSummary, rpe, jointComfort });
+    }
     setPendingSummary(null);
     setDiscardPromptOpen(false);
     setRpe(5);
@@ -183,6 +194,8 @@ export default function App() {
                 </div>
               </div>
             ) : null}
+
+            {!pendingSummary.wasManualStop ? <AsciiCelebration open /> : null}
 
             {/* Motivational message */}
             <div className="mt-3 rounded-[1.4rem] border border-[#d4ff6a]/20 bg-[#d4ff6a]/8 px-4 py-3 text-sm text-[#d4ff6a]">
@@ -280,14 +293,14 @@ export default function App() {
                 onClick={saveSession}
                 className="rounded-full bg-[#d4ff6a] px-4 py-4 font-semibold text-black"
               >
-                Save Record
+                {pendingSummary.wasAutoSaved ? 'Update Record' : 'Save Record'}
               </button>
               <button
                 type="button"
-                onClick={requestCloseSummary}
+                onClick={pendingSummary.wasAutoSaved ? confirmDiscardSummary : requestCloseSummary}
                 className="rounded-full border border-white/10 bg-white/5 px-4 py-4 font-medium text-[#f2f5ef]"
               >
-                Discard
+                {pendingSummary.wasAutoSaved ? 'Close' : 'Discard'}
               </button>
             </div>
           </div>
