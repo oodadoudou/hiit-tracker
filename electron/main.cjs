@@ -22,7 +22,8 @@ function createWindow() {
     height: 960,
     minWidth: 1120,
     minHeight: 760,
-    backgroundColor: '#07111f',
+    show: false,
+    backgroundColor: '#121614',
     icon: iconPath,
     autoHideMenuBar: true,
     webPreferences: {
@@ -31,6 +32,11 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
     },
+  });
+
+  // Show only after first paint — no black flash on startup
+  win.once('ready-to-show', () => {
+    win.show();
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -42,7 +48,7 @@ function createWindow() {
     win.loadURL(devServerUrl);
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
-    win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    win.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'));
   }
 }
 

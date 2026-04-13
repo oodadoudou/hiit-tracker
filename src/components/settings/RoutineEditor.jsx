@@ -105,7 +105,9 @@ export default function RoutineEditor({
             </div>
             <div>
               <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Circuits</label>
-              <input name="circuits" type="number" min="1" value={form.circuits} onChange={onFieldChange} className="w-full rounded-[1.4rem] border border-white/10 px-4 py-3 outline-none" disabled={form.mode === 'infinite'} />
+              {form.mode === 'infinite'
+                ? <div className="flex w-full items-center rounded-[1.4rem] border border-white/8 bg-white/[0.02] px-4 py-3 text-lg font-semibold text-[#5a6358]">∞</div>
+                : <input name="circuits" type="number" min="1" value={form.circuits} onChange={onFieldChange} className="w-full rounded-[1.4rem] border border-white/10 px-4 py-3 outline-none" />}
             </div>
             <div>
               <label className="mb-2 block text-[11px] uppercase tracking-[0.25em] text-[#8d9688]">Work Sec</label>

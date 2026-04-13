@@ -92,6 +92,7 @@ export function useTimer(routine, onStop, options = {}) {
       intensityKey: options.intensityKey,
       intensityMultiplier: options.intensityMultiplier,
       weightKg: options.weightKg,
+      sessionsPerWeek: options.sessionsPerWeek,
     });
     setTimer(createIdleState());
     playCompletionTone(cueModeRef.current, routine.exercises?.[current.exerciseIndex] || routine.exercises?.[0] || null);
@@ -141,11 +142,14 @@ export function useTimer(routine, onStop, options = {}) {
       }
 
       if (routine.mode === 'infinite') {
+        // After the last exercise: enter rest first if configured, otherwise circuit rest, otherwise loop directly
         if (effectiveRestSec > 0) {
           enterTimedPhase('rest');
+        } else if (routine.circuitRestSec > 0) {
+          enterTimedPhase('circuitRest');
         } else {
           playSessionCue('start', cueMode, routine.exercises?.[0] || currentExercise);
-          setTimer((prev) => ({ ...prev, exerciseIndex: 0, phase: 'work', remainingSec: getEffectiveWorkSec(routine.exercises, 0, routine.workSec), lastTickAt: Date.now() }));
+          setTimer((prev) => ({ ...prev, circuitIndex: prev.circuitIndex + 1, exerciseIndex: 0, phase: 'work', remainingSec: getEffectiveWorkSec(routine.exercises, 0, routine.workSec), lastTickAt: Date.now() }));
         }
         return;
       }
@@ -181,9 +185,13 @@ export function useTimer(routine, onStop, options = {}) {
             setTimer((prev) => ({ ...prev, circuitIndex: prev.circuitIndex + 1, exerciseIndex: 0, phase: 'work', remainingSec: getEffectiveWorkSec(routine.exercises, 0, routine.workSec), lastTickAt: Date.now() }));
           }
         } else {
-          // Infinite mode — loop back to exercise 0
-          playSessionCue('start', cueMode, routine.exercises?.[0] || currentExercise);
-          setTimer((prev) => ({ ...prev, exerciseIndex: 0, phase: 'work', remainingSec: getEffectiveWorkSec(routine.exercises, 0, routine.workSec), lastTickAt: Date.now() }));
+          // Infinite mode — enter circuit rest if configured, otherwise loop directly
+          if (routine.circuitRestSec > 0) {
+            enterTimedPhase('circuitRest');
+          } else {
+            playSessionCue('start', cueMode, routine.exercises?.[0] || currentExercise);
+            setTimer((prev) => ({ ...prev, circuitIndex: prev.circuitIndex + 1, exerciseIndex: 0, phase: 'work', remainingSec: getEffectiveWorkSec(routine.exercises, 0, routine.workSec), lastTickAt: Date.now() }));
+          }
         }
         return;
       }
@@ -299,14 +307,18 @@ export function useTimer(routine, onStop, options = {}) {
     stop() {
       const current = timerRef.current;
       if (!routine || current.phase === 'idle') return;
-      finishAndLog(buildWorkoutSummary({
-        routine,
-        elapsedSec: current.elapsedSec,
-        activeWorkSec: current.activeWorkSec,
-        intensityKey: options.intensityKey,
-        intensityMultiplier: options.intensityMultiplier,
-        weightKg: options.weightKg,
-      }));
+      finishAndLog({
+        ...buildWorkoutSummary({
+          routine,
+          elapsedSec: current.elapsedSec,
+          activeWorkSec: current.activeWorkSec,
+          intensityKey: options.intensityKey,
+          intensityMultiplier: options.intensityMultiplier,
+          weightKg: options.weightKg,
+          sessionsPerWeek: options.sessionsPerWeek,
+        }),
+        wasManualStop: true,
+      });
     },
     reset() {
       stopTicker();

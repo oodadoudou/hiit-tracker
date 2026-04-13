@@ -66,21 +66,46 @@ export function normalizeRoutine(routine) {
   };
 }
 
-const BASE_MET = { cardio: 9.0, legs: 5.0, upper: 4.0, core: 3.5, recovery: 2.5, general: 5.0 };
+// MET values updated per Compendium of Physical Activities + HIIT-specific research
+// HIIT intervals run at higher effective METs than steady-state; strength exercises raised ~15%
+const BASE_MET = { cardio: 9.5, legs: 6.5, upper: 5.0, core: 3.5, recovery: 2.0, general: 5.5 };
 const IMPACT_MOD = { high: 1.25, medium: 1.0, low: 0.8 };
+// EPOC (excess post-exercise oxygen consumption) bonus per focus type.
+// Cardio/HIIT shows ~25% additional caloric cost from the afterburn effect;
+// strength work is lower (~5-10%); recovery negligible.
+const EPOC_BONUS = { cardio: 0.25, legs: 0.10, upper: 0.05, core: 0.05, recovery: 0.0, general: 0.10 };
 
 function getMETForExercise(ex) {
-  return (BASE_MET[ex?.focus] ?? 5.0) * (IMPACT_MOD[ex?.impactLevel] ?? 1.0);
+  return (BASE_MET[ex?.focus] ?? 5.5) * (IMPACT_MOD[ex?.impactLevel] ?? 1.0);
 }
 
-function computeCalories(exercises, weightKg, activeWorkSec, intensityMultiplier) {
+// Training frequency modifier: more adapted athletes have modestly higher metabolic cost per unit effort.
+// Range: 1.0 (sedentary / new) → 1.08 (5+ sessions/week)
+function getFrequencyModifier(sessionsPerWeek) {
+  const s = Number(sessionsPerWeek) || 0;
+  if (s >= 5) return 1.08;
+  if (s >= 2) return 1.05;
+  return 1.0;
+}
+
+function computeCalories(exercises, weightKg, activeWorkSec, intensityMultiplier, sessionsPerWeek) {
   const safeWeight = Math.max(30, Number(weightKg) || 60);
-  const mets = Array.isArray(exercises) && exercises.length ? exercises.map(getMETForExercise) : [5.0];
-  const avgMET = mets.reduce((s, m) => s + m, 0) / mets.length;
-  return Math.max(0, Math.round(avgMET * safeWeight * (activeWorkSec / 3600) * intensityMultiplier));
+  const freqMod = getFrequencyModifier(sessionsPerWeek);
+  const exList = Array.isArray(exercises) && exercises.length
+    ? exercises
+    : [{ focus: 'general', impactLevel: 'medium' }];
+  const perExSec = activeWorkSec / exList.length;
+  let totalCal = 0;
+  for (const ex of exList) {
+    const met = getMETForExercise(ex);
+    const epoc = EPOC_BONUS[ex?.focus] ?? 0.10;
+    const base = met * safeWeight * (perExSec / 3600) * intensityMultiplier * freqMod;
+    totalCal += base * (1 + epoc);
+  }
+  return Math.max(0, Math.round(totalCal));
 }
 
-export function buildWorkoutSummary({ routine, elapsedSec, activeWorkSec, intensityKey = 'normal', intensityMultiplier = 1, weightKg = 60 }) {
+export function buildWorkoutSummary({ routine, elapsedSec, activeWorkSec, intensityKey = 'normal', intensityMultiplier = 1, weightKg = 60, sessionsPerWeek = 0 }) {
   const safeIntensityMultiplier = Math.max(0.6, Number(intensityMultiplier) || 1);
   return {
     id: crypto.randomUUID(),
@@ -92,7 +117,7 @@ export function buildWorkoutSummary({ routine, elapsedSec, activeWorkSec, intens
     activeWorkSec,
     intensityKey,
     intensityMultiplier: safeIntensityMultiplier,
-    caloriesBurned: computeCalories(routine?.exercises, weightKg, activeWorkSec, safeIntensityMultiplier),
+    caloriesBurned: computeCalories(routine?.exercises, weightKg, activeWorkSec, safeIntensityMultiplier, sessionsPerWeek),
   };
 }
 

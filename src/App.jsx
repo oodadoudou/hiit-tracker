@@ -61,13 +61,15 @@ export default function App() {
     const routine = state.routines.find((r) => r.id === pendingSummary.routineId);
     if (!routine?.exercises?.length) return [];
     const exercises = routine.exercises;
-    const perExSec = Math.round((pendingSummary.activeWorkSec || 0) / exercises.length);
+    const perExSec = (pendingSummary.activeWorkSec || 0) / exercises.length;
     const weightKg = Math.max(30, Number(state.userSettings.weightKg) || 60);
-    const BASE_MET = { cardio: 9.0, legs: 5.0, upper: 4.0, core: 3.5, recovery: 2.5, general: 5.0 };
+    const BASE_MET = { cardio: 9.5, legs: 6.5, upper: 5.0, core: 3.5, recovery: 2.0, general: 5.5 };
     const IMPACT_MOD = { high: 1.25, medium: 1.0, low: 0.8 };
+    const EPOC_BONUS = { cardio: 0.25, legs: 0.10, upper: 0.05, core: 0.05, recovery: 0.0, general: 0.10 };
     return exercises.map((ex) => {
-      const met = (BASE_MET[ex.focus] ?? 5.0) * (IMPACT_MOD[ex.impactLevel] ?? 1.0);
-      const cal = Math.round(met * weightKg * (perExSec / 3600) * (pendingSummary.intensityMultiplier || 1));
+      const met = (BASE_MET[ex.focus] ?? 5.5) * (IMPACT_MOD[ex.impactLevel] ?? 1.0);
+      const epoc = EPOC_BONUS[ex.focus] ?? 0.10;
+      const cal = Math.round(met * weightKg * (perExSec / 3600) * (pendingSummary.intensityMultiplier || 1) * (1 + epoc));
       return { name: ex.name, cal, focus: ex.focus };
     });
   }, [pendingSummary, state.routines, state.userSettings.weightKg]);
@@ -87,14 +89,13 @@ export default function App() {
   const handleSessionStop = (summary) => {
     if (!summary) return;
     const dur = summary.totalDurationSec || 0;
-    if (dur < minimumSavedWorkoutSec) {
-      // Under threshold — silent discard, just show a brief notice
+    // Manual stops always show the save prompt regardless of duration
+    if (!summary.wasManualStop && dur < minimumSavedWorkoutSec) {
       setPendingSummary(null);
       const mins = Math.round(minimumSavedWorkoutSec / 60);
       setSessionNotice(`Session under ${mins} min — not saved. Adjust the minimum in Profile settings.`);
       return;
     }
-    // Over threshold — show save prompt
     setPendingSummary(summary);
   };
 
@@ -157,7 +158,7 @@ export default function App() {
       ) : null}
 
       {/* ── Feature 6: Richer workout completion modal ── */}
-      <Modal open={Boolean(pendingSummary)} title="Workout Complete!" onClose={requestCloseSummary}>
+      <Modal open={Boolean(pendingSummary)} title={pendingSummary?.wasManualStop ? 'Save Session?' : 'Workout Complete!'} onClose={requestCloseSummary}>
         {pendingSummary ? (
           <div>
             {discardPromptOpen ? (
