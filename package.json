@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "desktop:dev": "electron .",
+    "desktop:dev": "node scripts/desktop-dev.cjs",
     "desktop:build": "npm run build && electron-builder --win portable"
   },
   "dependencies": {

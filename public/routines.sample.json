@@ -13,7 +13,12 @@
         "images": ["https://your-image-url-here.jpg"],
         "tips": ["Keep good form", "Stay controlled", "Breathe steadily"],
         "breathingCue": "Inhale down · Exhale up",
-        "commonMistakes": ["Don't arch your back", "Keep core tight"]
+        "commonMistakes": ["Don't arch your back", "Keep core tight"],
+        "focus": "general",
+        "jointLoad": "medium",
+        "impactLevel": "medium",
+        "tempo": "steady",
+        "regression": "reduce speed and use the easiest stable version"
       }
     ]
   }

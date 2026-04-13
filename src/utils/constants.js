@@ -1,12 +1,25 @@
+export const FALLBACK_GUIDE_IMAGE = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <rect width="640" height="360" fill="#18211d"/>
+  <rect x="22" y="22" width="596" height="316" rx="28" fill="#222c27" stroke="#3a463f" stroke-width="2"/>
+  <circle cx="240" cy="144" r="36" fill="#d4ff6a" opacity="0.9"/>
+  <rect x="226" y="182" width="28" height="82" rx="14" fill="#d4ff6a" opacity="0.9"/>
+  <rect x="180" y="192" width="120" height="20" rx="10" fill="#d4ff6a" opacity="0.78"/>
+  <rect x="188" y="260" width="22" height="58" rx="11" fill="#d4ff6a" opacity="0.78"/>
+  <rect x="270" y="260" width="22" height="58" rx="11" fill="#d4ff6a" opacity="0.78"/>
+  <text x="356" y="150" fill="#f2f5ef" font-family="Arial, sans-serif" font-size="34" font-weight="700">Visual Guide</text>
+  <text x="356" y="190" fill="#aeb7a8" font-family="Arial, sans-serif" font-size="18">Offline-safe fallback image</text>
+</svg>
+`)}`;
+
 export const STORAGE_KEYS = {
   appState: 'fitness-tracker-react-v1',
+  coachCatUi: 'fitness-tracker-react-v1-coach-cat-ui',
 };
 
 export const REST_GUIDE = {
   name: 'Rest & Breathe',
-  images: [
-    'https://chatgpt.com/backend-api/estuary/content?id=file_000000005d8c720abfb64807b6035980&ts=493317&p=fs&cid=1&sig=2bee393c7af5214a0a5e5be54d55373c485f1e9733c726baa554af26a31e9d64&v=0',
-  ],
+  images: [FALLBACK_GUIDE_IMAGE],
   tips: ['Slow your breathing', 'Relax your shoulders', 'Get ready for the next round'],
 };
 
@@ -56,11 +69,18 @@ export const DEFAULT_APP_STATE = {
   selectedRoutineId: null,
   workoutHistory: [],
   dailyMetrics: SEEDED_DAILY_METRICS,
+  exerciseLibrary: [],
   userSettings: {
     sex: 'female',
     age: 30,
     heightCm: 165,
     weightKg: 60,
     calorieGoal: 1800,
+    coachStyle: 'cold',
+    enableCoachCat: true,
+    enableEncouragementAudio: true,
+    coachPromptFrequency: 'balanced',
+    warmupPreference: 'minimal',
+    minimumSavedWorkoutSec: 120,
   },
 };

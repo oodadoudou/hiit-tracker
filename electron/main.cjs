@@ -2,9 +2,19 @@ const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 const isDev = !app.isPackaged;
-const iconPath = isDev
-  ? path.join(__dirname, '..', 'build', 'icon.png')
-  : path.join(process.resourcesPath, 'build', 'icon.png');
+const iconPath = path.join(app.getAppPath(), 'build', 'icon.png');
+const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://127.0.0.1:5173';
+const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+
+function openExternalIfAllowed(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    if (!ALLOWED_EXTERNAL_PROTOCOLS.has(parsed.protocol)) return;
+    shell.openExternal(parsed.toString());
+  } catch {
+    // Ignore malformed URLs from the renderer.
+  }
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -19,17 +29,17 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    openExternalIfAllowed(url);
     return { action: 'deny' };
   });
 
   if (isDev) {
-    win.loadURL('http://127.0.0.1:5173');
+    win.loadURL(devServerUrl);
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
     win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));

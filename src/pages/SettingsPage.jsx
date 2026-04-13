@@ -1,117 +1,66 @@
-import { useEffect, useMemo, useState } from 'react';
-import JsonManager from '../components/settings/JsonManager';
-import RoutineEditor from '../components/settings/RoutineEditor';
+import { useEffect, useState } from 'react';
 import SettingsForm from '../components/settings/SettingsForm';
 import { useAppContext } from '../context/AppContext';
 
-function createBlankForm() {
-  return {
-    id: '',
-    name: '',
-    mode: 'infinite',
-    workSec: 40,
-    restSec: 20,
-    circuitRestSec: 0,
-    circuits: 1,
-    exercisesJson: JSON.stringify([{ name: 'Exercise', images: ['https://via.placeholder.com/640x360?text=Exercise'], tips: ['Tip 1', 'Tip 2'] }], null, 2),
-  };
-}
-
 export default function SettingsPage() {
-  const { state, estimatedMetabolism, saveRoutine, deleteRoutine, exportState, importState, updateUserSettings } = useAppContext();
-  const selectedRoutine = useMemo(() => state.routines.find((routine) => routine.id === state.selectedRoutineId), [state.routines, state.selectedRoutineId]);
-  const [form, setForm] = useState(() => selectedRoutine ? toForm(selectedRoutine) : createBlankForm());
+  const { state, estimatedMetabolism, updateUserSettings } = useAppContext();
+  const [settingsDraft, setSettingsDraft] = useState(() => toSettingsDraft(state.userSettings));
 
   useEffect(() => {
-    setForm(selectedRoutine ? toForm(selectedRoutine) : createBlankForm());
-  }, [selectedRoutine]);
+    setSettingsDraft(toSettingsDraft(state.userSettings));
+  }, [state.userSettings]);
 
-  const handleSelect = (id) => {
-    const routine = state.routines.find((item) => item.id === id);
-    setForm(routine ? toForm(routine) : createBlankForm());
-  };
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    try {
-      saveRoutine({
-        id: form.id || crypto.randomUUID(),
-        name: form.name,
-        mode: form.mode,
-        workSec: Number(form.workSec),
-        restSec: Number(form.restSec),
-        circuitRestSec: Number(form.circuitRestSec),
-        circuits: Number(form.circuits),
-        exercises: JSON.parse(form.exercisesJson),
-      });
-      alert('Routine saved.');
-    } catch (error) {
-      console.error(error);
-      alert('Routine JSON is invalid.');
+  const handleSettingsDraftChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    const nextValue = type === 'checkbox' ? checked : value;
+    setSettingsDraft((prev) => ({ ...prev, [name]: nextValue }));
+    if (type === 'checkbox' || ['coachStyle', 'coachPromptFrequency', 'warmupPreference'].includes(name)) {
+      updateUserSettings({ [name]: nextValue });
     }
   };
 
-  const handleDelete = () => {
-    if (!form.id) return;
-    deleteRoutine(form.id);
-    setForm(createBlankForm());
-  };
-
-  const handleExport = () => {
-    const blob = new Blob([exportState()], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'hiit-tracker-full-backup.json';
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImport = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        importState(String(reader.result));
-        alert('Import completed.');
-      } catch (error) {
-        console.error(error);
-        alert('Import failed.');
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleSettingsChange = (event) => {
-    updateUserSettings({ [event.target.name]: Number(event.target.value) || 0 });
+  const commitSettingsField = (name, options = {}) => {
+    const nextValue = parseNumericDraft(settingsDraft[name], state.userSettings[name], options);
+    updateUserSettings({ [name]: nextValue });
   };
 
   return (
     <div className="space-y-4">
-        <RoutineEditor form={form} onChange={handleChange} onSubmit={handleSubmit} onDelete={handleDelete} routines={state.routines} selectedId={form.id} onSelect={handleSelect} onNew={() => setForm(createBlankForm())} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SettingsForm settings={state.userSettings} estimatedMetabolism={estimatedMetabolism} onChange={handleSettingsChange} />
-        <JsonManager onExport={handleExport} onImport={handleImport} />
+      <div className="rounded-[2rem] border border-white/10 bg-[rgba(18,22,20,0.82)] px-5 py-5 shadow-[0_20px_70px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:px-7">
+        <p className="text-[11px] uppercase tracking-[0.35em] text-[#9aa394]">Profile</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#f2f5ef]">Personal Settings</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-[#aeb7a8]">
+          Body data, coach style, and prompt preferences. Routine editing and generator are on the Routines page. Import / export is on the Data page.
+        </p>
       </div>
+      <SettingsForm
+        settings={settingsDraft}
+        estimatedMetabolism={estimatedMetabolism}
+        onChange={handleSettingsDraftChange}
+        onCommit={commitSettingsField}
+      />
     </div>
   );
 }
 
-function toForm(routine) {
+function toSettingsDraft(settings) {
   return {
-    id: routine.id,
-    name: routine.name,
-    mode: routine.mode,
-    workSec: routine.workSec,
-    restSec: routine.restSec,
-    circuitRestSec: routine.circuitRestSec,
-    circuits: routine.circuits,
-    exercisesJson: JSON.stringify(routine.exercises, null, 2),
+    age: String(settings.age ?? ''),
+    heightCm: String(settings.heightCm ?? ''),
+    weightKg: String(settings.weightKg ?? ''),
+    calorieGoal: String(settings.calorieGoal ?? ''),
+    coachStyle: settings.coachStyle || 'cold',
+    enableCoachCat: Boolean(settings.enableCoachCat),
+    enableEncouragementAudio: settings.enableEncouragementAudio !== false,
+    coachPromptFrequency: settings.coachPromptFrequency || 'balanced',
+    warmupPreference: settings.warmupPreference || 'minimal',
+    minimumSavedWorkoutSec: String(settings.minimumSavedWorkoutSec ?? 120),
   };
+}
+
+function parseNumericDraft(rawValue, fallbackValue, { min = 0, allowFloat = false } = {}) {
+  if (rawValue === '') return fallbackValue;
+  const parsed = allowFloat ? Number.parseFloat(rawValue) : Number.parseInt(rawValue, 10);
+  if (!Number.isFinite(parsed)) return fallbackValue;
+  return Math.max(min, allowFloat ? parsed : Math.round(parsed));
 }

@@ -1,6 +1,6 @@
 import { formatDateTime } from '../../utils/date';
 
-export default function HistoryTable({ items }) {
+export default function HistoryTable({ items, onEdit, onDelete }) {
   if (!items.length) {
     return <div className="rounded-[1.6rem] border border-white/10 bg-[#222925] p-6 text-center text-[#93a08f]">No workouts logged yet.</div>;
   }
@@ -17,6 +17,7 @@ export default function HistoryTable({ items }) {
               <th className="px-4 py-3">Calories</th>
               <th className="px-4 py-3">RPE</th>
               <th className="px-4 py-3">Joint</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -28,6 +29,16 @@ export default function HistoryTable({ items }) {
                 <td className="px-4 py-3">{item.caloriesBurned}</td>
                 <td className="px-4 py-3">{item.rpe}</td>
                 <td className="px-4 py-3">{item.jointComfort}</td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={() => onEdit(item)} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-[#f2f5ef]">
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => onDelete(item)} className="rounded-full border border-[#ff8b2b]/30 bg-[#ff8b2b]/10 px-3 py-1.5 text-xs font-semibold text-[#ff8b2b]">
+                      Delete
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

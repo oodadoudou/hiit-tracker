@@ -5,6 +5,7 @@ release/
 .env
 .env.*
 !.env.example
+*.local
 
 *.log
 npm-debug.log*
@@ -29,3 +30,12 @@ user-data/
 
 # Personal routine data — copy routines.sample.json → routines.json and fill in your own data
 public/routines.json
+
+# Claude Code local settings
+.claude/
+
+# electron-builder debug/cache artifacts
+builder-debug.yml
+builder-effective-config.yaml
+
+tasks/

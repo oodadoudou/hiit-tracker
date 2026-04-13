@@ -146,6 +146,8 @@ Run Electron in development:
 npm run desktop:dev
 ```
 
+This command now starts the Vite dev server and Electron together.
+
 ## Build
 
 Build web assets:
